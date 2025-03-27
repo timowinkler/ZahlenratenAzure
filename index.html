@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modernes Zahlenraten-Spiel</title>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --accent: #4895ef;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --success: #4cc9f0;
+            --error: #f72585;
+            --border-radius: 12px;
+            --box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        h1 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .description {
+            color: var(--dark);
+            opacity: 0.8;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .input-group {
+            display: flex;
+            margin-bottom: 25px;
+        }
+
+        input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: var(--border-radius) 0 0 var(--border-radius);
+            font-size: 18px;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0 25px;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background-color: var(--secondary);
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .success {
+            background-color: rgba(76, 201, 240, 0.2);
+            color: var(--success);
+            display: block;
+        }
+
+        .error {
+            background-color: rgba(247, 37, 133, 0.2);
+            color: var(--error);
+            display: block;
+        }
+
+        .info {
+            background-color: rgba(67, 97, 238, 0.2);
+            color: var(--primary);
+            display: block;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--dark);
+            opacity: 0.7;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Zahlenraten</h1>
+        <p class="description">
+            Errate die geheime Zahl zwischen 1 und 100! 
+            Du bekommst Hinweise, ob dein Tipp zu hoch oder zu niedrig ist.
+        </p>
+        
+        <div class="message" id="message"></div>
+        
+        <div class="input-group">
+            <input type="number" id="guessInput" placeholder="Dein Tipp..." min="1" max="100">
+            <button id="guessButton">Raten</button>
+        </div>
+        
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="attempts">0</div>
+                <div class="stat-label">Versuche</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="bestScore">-</div>
+                <div class="stat-label">Bester Versuch</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="range">1-100</div>
+                <div class="stat-label">Bereich</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Elemente auswählen
+            const guessInput = document.getElementById('guessInput');
+            const guessButton = document.getElementById('guessButton');
+            const message = document.getElementById('message');
+            const attemptsDisplay = document.getElementById('attempts');
+            const bestScoreDisplay = document.getElementById('bestScore');
+            const rangeDisplay = document.getElementById('range');
+            
+            // Spielvariablen
+            let secretNumber = generateRandomNumber(1, 100);
+            let attempts = 0;
+            let bestScore = localStorage.getItem('bestScore') || null;
+            let minRange = 1;
+            let maxRange = 100;
+            
+            // Besten Score anzeigen
+            if (bestScore) {
+                bestScoreDisplay.textContent = bestScore;
+            }
+            
+            // Event Listener für den Rat-Button
+            guessButton.addEventListener('click', checkGuess);
+            
+            // Event Listener für Enter-Taste
+            guessInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    checkGuess();
+                }
+            });
+            
+            // Funktion zur Überprüfung des Tipps
+            function checkGuess() {
+                const userGuess = parseInt(guessInput.value);
+                
+                // Validierung
+                if (isNaN(userGuess) || userGuess < 1 || userGuess > 100) {
+                    showMessage('Bitte gib eine Zahl zwischen 1 und 100 ein!', 'error');
+                    return;
+                }
+                
+                // Versuch zählen
+                attempts++;
+                attemptsDisplay.textContent = attempts;
+                
+                // Überprüfen ob richtig geraten
+                if (userGuess === secretNumber) {
+                    showMessage(`Glückwunsch! Du hast die Zahl ${secretNumber} in ${attempts} Versuchen erraten!`, 'success');
+                    
+                    // Besten Score aktualisieren
+                    if (!bestScore || attempts < bestScore) {
+                        bestScore = attempts;
+                        bestScoreDisplay.textContent = bestScore;
+                        localStorage.setItem('bestScore', bestScore);
+                    }
+                    
+                    // Neues Spiel vorbereiten
+                    setTimeout(resetGame, 3000);
+                    return;
+                }
+                
+                // Hinweis geben
+                if (userGuess < secretNumber) {
+                    minRange = userGuess + 1;
+                    showMessage(`Die gesuchte Zahl ist größer als ${userGuess}.`, 'info');
+                } else {
+                    maxRange = userGuess - 1;
+                    showMessage(`Die gesuchte Zahl ist kleiner als ${userGuess}.`, 'info');
+                }
+                
+                // Bereichsanzeige aktualisieren
+                rangeDisplay.textContent = `${minRange}-${maxRange}`;
+                
+                // Eingabefeld leeren und fokus setzen
+                guessInput.value = '';
+                guessInput.focus();
+            }
+            
+            // Funktion zur Anzeige von Nachrichten
+            function showMessage(msg, type) {
+                message.textContent = msg;
+                message.className = 'message ' + type;
+            }
+            
+            // Funktion zum Zurücksetzen des Spiels
+            function resetGame() {
+                secretNumber = generateRandomNumber(1, 100);
+                attempts = 0;
+                minRange = 1;
+                maxRange = 100;
+                
+                attemptsDisplay.textContent = '0';
+                rangeDisplay.textContent = '1-100';
+                message.className = 'message';
+                message.textContent = '';
+                guessInput.value = '';
+                guessInput.focus();
+            }
+            
+            // Funktion zur Generierung einer Zufallszahl
+            function generateRandomNumber(min, max) {
+                return Math.floor(Math.random() * (max - min + 1)) + min;
+            }
+        });
+    </script>
+</body>
+</html>
